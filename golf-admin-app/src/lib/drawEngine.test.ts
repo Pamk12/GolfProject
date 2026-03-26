@@ -195,3 +195,59 @@ test('Rejects negative inputs', () => {
     /Pools cannot be strictly negative/
   );
 });
+
+// ---- MULTISET INTERSECTION TESTS (Bug B Fix) ----
+
+/**
+ * Counts matches using strict multiset intersection.
+ * Each drawn number can only be matched by at most one user score.
+ * Example: draw=[5,10,15,20,25], user=[5,10,10,5,10] → 2 matches (not 5)
+ */
+function multisetIntersectionCount(drawn: number[], userScores: number[]): number {
+  const drawnFreq = new Map<number, number>();
+  for (const n of drawn) drawnFreq.set(n, (drawnFreq.get(n) ?? 0) + 1);
+  let count = 0;
+  for (const s of userScores) {
+    const remaining = drawnFreq.get(s) ?? 0;
+    if (remaining > 0) {
+      count++;
+      drawnFreq.set(s, remaining - 1);
+    }
+  }
+  return count;
+}
+
+test('multiset intersection - duplicate user scores do NOT inflate match count', () => {
+  // Draw: [5, 10, 15, 20, 25]  User: [5, 10, 10, 5, 10]  → expect 2 matches
+  const result = multisetIntersectionCount([5, 10, 15, 20, 25], [5, 10, 10, 5, 10]);
+  assert.strictEqual(result, 2); // NOT 5
+});
+
+test('multiset intersection - all unique matches count correctly', () => {
+  // Draw: [10, 20, 30, 40, 45]  User: [10, 20, 30, 1, 2] → expect 3 matches
+  const result = multisetIntersectionCount([10, 20, 30, 40, 45], [10, 20, 30, 1, 2]);
+  assert.strictEqual(result, 3);
+});
+
+test('multiset intersection - zero matches', () => {
+  const result = multisetIntersectionCount([5, 10, 15, 20, 25], [1, 2, 3, 4, 6]);
+  assert.strictEqual(result, 0);
+});
+
+test('multiset intersection - perfect match all five', () => {
+  const result = multisetIntersectionCount([5, 10, 15, 20, 25], [5, 10, 15, 20, 25]);
+  assert.strictEqual(result, 5);
+});
+
+test('multiset intersection - drawn number appears twice, user score appears once', () => {
+  // Draw: [5, 5, 10, 15, 20]  User: [5, 1, 2, 3, 4] → expect 1 match (only one 5)
+  const result = multisetIntersectionCount([5, 5, 10, 15, 20], [5, 1, 2, 3, 4]);
+  assert.strictEqual(result, 1);
+});
+
+test('multiset intersection - both drawn and user have duplicates', () => {
+  // Draw: [5, 5, 10, 10, 15]  User: [5, 10, 10, 10, 1] → expect 3 (one 5, two 10s)
+  const result = multisetIntersectionCount([5, 5, 10, 10, 15], [5, 10, 10, 10, 1]);
+  assert.strictEqual(result, 3);
+});
+

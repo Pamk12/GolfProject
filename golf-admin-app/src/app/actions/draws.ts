@@ -6,9 +6,28 @@ import { aggregateSystemAnalytics, UserSubscription } from '@/lib/adminLogic';
 import { verifyAdmin } from './admin';
 
 /**
+ * Counts matches using strict multiset intersection.
+ * Each drawn number can only be matched by at most one user score.
+ * Example: draw=[5,10,15,20,25], user=[5,10,10,5,10] → 2 matches (not 5)
+ */
+function multisetIntersectionCount(drawn: number[], userScores: number[]): number {
+  const drawnFreq = new Map<number, number>();
+  for (const n of drawn) drawnFreq.set(n, (drawnFreq.get(n) ?? 0) + 1);
+  let count = 0;
+  for (const s of userScores) {
+    const remaining = drawnFreq.get(s) ?? 0;
+    if (remaining > 0) {
+      count++;
+      drawnFreq.set(s, remaining - 1);
+    }
+  }
+  return count;
+}
+
+/**
  * executeRngRouting()
  * Core backend engine for the Monthly Prize Draw Algorithm (RNG_ROUTING).
- * 
+ *
  * ALGORITHM:
  * - Generates exactly 5 unique, discrete integers between 1 and 45.
  * - Supports Random OR Algorithmic (Weighted) Generation.
@@ -94,12 +113,11 @@ export async function executeRngRouting(
   }
 
   // STEP 4: RUN MATCHING ALGORITHM
-  const winners = { 
+  const winners = {
     demo: { tier1: [] as string[], tier2: [] as string[], tier3: [] as string[] },
     monthly: { tier1: [] as string[], tier2: [] as string[], tier3: [] as string[] },
     yearly: { tier1: [] as string[], tier2: [] as string[], tier3: [] as string[] }
   };
-  const winningSet = new Set(winningNumbers);
 
   const userStatusMap: Record<string, string> = {};
   const userTierMap: Record<string, string> = {};
@@ -111,8 +129,8 @@ export async function executeRngRouting(
   }
 
   for (const [userId, vector] of Object.entries(userVectors)) {
-    const matchCount = vector.filter(v => winningSet.has(v)).length;
-    
+    const matchCount = multisetIntersectionCount(winningNumbers, vector);
+
     const tier = userTierMap[userId] || 'demo';
     const cat = (tier === 'monthly' || tier === 'yearly') ? tier : 'demo';
 
@@ -147,7 +165,7 @@ export async function executeRngRouting(
   ];
 
   // STEP 5: SAVE PROTOCOL RESULTS TO THE DATABASE
-  const { error: insertErr } = await supabase
+  const { data: insertedDraw, error: insertErr } = await supabase
     .from('draws')
     .insert([{
       draw_month: new Date().toISOString().split('T')[0], // YYYY-MM-DD
@@ -160,9 +178,27 @@ export async function executeRngRouting(
       },
       winning_user_ids: allWinningIds,
       status: mode
-    }]);
+    }])
+    .select('id')
+    .single();
 
   if (insertErr) throw new Error(insertErr.message);
+
+  // Snapshot each user's score vector against this draw (temporal isolation)
+  if (mode === 'published' && insertedDraw?.id) {
+    const snapshotPayload = Object.entries(userVectors).map(([userId, vector]) => ({
+      draw_id: insertedDraw.id,
+      user_id: userId,
+      score_snapshot: vector,
+      match_count: multisetIntersectionCount(winningNumbers, vector),
+    }));
+    
+    if (snapshotPayload.length > 0) {
+      const { error: snapErr } = await supabase.from('draw_entries').insert(snapshotPayload);
+      if (snapErr) console.warn('Snapshot insertion failure:', snapErr.message);
+    }
+  }
+
 
   // STEP 6: NOTIFY THE DASHBOARDS OF A STATE CHANGE
   if (mode === 'published') {
