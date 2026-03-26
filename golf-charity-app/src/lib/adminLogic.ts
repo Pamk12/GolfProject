@@ -80,3 +80,17 @@ export function aggregateSystemAnalytics(users: UserSubscription[], monthlySubsc
     projectedPrizePool: parseFloat(projectedPrizePool.toFixed(2)),
   };
 }
+
+export function multisetIntersectionCount(arr1: number[], arr2: number[]): number {
+  const counts1: Record<number, number> = {};
+  for (const num of arr1) counts1[num] = (counts1[num] || 0) + 1;
+  
+  let matches = 0;
+  for (const num of arr2) {
+    if (counts1[num] > 0) {
+      matches++;
+      counts1[num]--;
+    }
+  }
+  return matches;
+}

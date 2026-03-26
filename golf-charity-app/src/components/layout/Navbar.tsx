@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Terminal, Menu, X, UserCircle, CreditCard, LayoutDashboard, Settings, LogOut } from 'lucide-react';
+import { Terminal, Menu, X, UserCircle, CreditCard, LayoutDashboard, Settings, LogOut, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -62,6 +62,11 @@ export default function Navbar() {
               <Link href="/user/dashboard" className={getLinkClasses('/user/dashboard')}>
                 [ /telemetry_dash ]
               </Link>
+              {session?.user?.email === 'admin@dheroes.com' && (
+                <a href="https://golf-project-three.vercel.app/" target="_blank" rel="noopener noreferrer" className="px-3 py-2 rounded-md text-xs font-mono font-medium text-purple-400 hover:text-white transition-colors flex items-center gap-2">
+                  <Shield className="w-4 h-4" /> [ /admin_node ]
+                </a>
+              )}
             </div>
           </div>
 
