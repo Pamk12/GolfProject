@@ -6,8 +6,8 @@ import { headers } from 'next/headers';
 export async function createCheckoutSession(interval: 'month' | 'year') {
   try {
     const headersList = await headers();
-    const host = headersList.get('host') || 'localhost:3000';
-    const protocol = headersList.get('x-forwarded-proto') || 'http';
+    const host = headersList.get('host') || 'golf-project-three.vercel.app';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
     const origin = `${protocol}://${host}`;
 
     const amount = interval === 'month' ? 1000 : 10000; // $10 or $100
