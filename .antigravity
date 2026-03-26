@@ -1,0 +1,11 @@
+Project Context: We are building a Golf Charity Subscription Platform. It combines golf performance tracking, charity fundraising, and a monthly draw-based reward engine.
+Tech Stack: Next.js (App Router), Tailwind CSS, Supabase (Database & Auth) , Stripe (Payments) , deployed on Vercel.
+Design Language: Clean, modern, and emotion-driven. Strictly avoid traditional golf clichés like plaid, fairways, or club imagery. Focus on charitable impact
+
+### ALGORITHM: RNG_ROUTING (Monthly Draw)
+- TRIGGERS: Manually executed via Admin Terminal.
+- GENERATION: Generate exactly 5 unique, discrete integers between 1 and 45.
+- MATCHING LOGIC: Compare the generated payload against all active user `scores` arrays for the current month.
+- TIER 1 (Jackpot): 5 Numbers Matched = 40% of Prize Pool. If no winner, funds rollover to next month.
+- TIER 2: 4 Numbers Matched = 35% of Prize Pool (Split equally among all T2 winners).
+- TIER 3: 3 Numbers Matched = 25% of Prize Pool (Split equally among all T3 winners).
